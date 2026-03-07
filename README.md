@@ -74,10 +74,12 @@ See the [devenv installation guide](https://devenv.sh/getting-started/) for deta
 Custom tasks with type `process` don't pick up on the modified environment.
 Several task provider extensions provide these kinds of tasks.
 
-When devenv *unsets* an environment variable
-then in the terminal it will be set to empty
-(what POSIX calls null).
+When devenv *unsets* an environment variable that already existed before devenv loaded,
+then in the terminal it will be set to empty (what POSIX calls null)
+rather than truly unset.
 [VSCode does not provide API to unset environment variables for the terminal.][vscode-evc]
+Variables that were not present before devenv loaded are handled correctly
+and will remain absent in the terminal.
 The difference between null and unset variables is mostly academic
 but some programs insist on treating them distinctly.
 
