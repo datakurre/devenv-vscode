@@ -11,21 +11,13 @@ import vscode from 'vscode'
 const execFile = util.promisify(_cp.execFile)
 
 export async function runSuite(workspaceRoot: string, testRoot: string, testPattern?: string) {
-	async function requireDirenv() {
-		await execFile('direnv', ['version'])
+	async function requireDevenv() {
+		await execFile('devenv', ['version'])
 	}
 
 	async function removeWatched() {
 		try {
-			await fs.rm(path.join(workspaceRoot, '.envrc.local'))
-		} catch (_) {
-			// ignore
-		}
-	}
-
-	async function blockWorkspace() {
-		try {
-			await execFile('direnv', ['deny', workspaceRoot])
+			await fs.rm(path.join(workspaceRoot, 'devenv.local.nix'))
 		} catch (_) {
 			// ignore
 		}
@@ -46,7 +38,7 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 	}
 
 	async function resetExtension() {
-		await vscode.commands.executeCommand('direnv.reset')
+		await vscode.commands.executeCommand('devenv.reset')
 	}
 
 	const mocha = new Mocha({
@@ -56,8 +48,7 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 		timeout: 10000,
 		rootHooks: {
 			async beforeAll() {
-				await requireDirenv()
-				await blockWorkspace()
+				await requireDevenv()
 				await resetExtension()
 			},
 			beforeEach() {
@@ -67,7 +58,6 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 				sinon.restore()
 				await closeTabs()
 				await removeWatched()
-				await blockWorkspace()
 			},
 			async afterAll() {
 				await closeWorkspace()

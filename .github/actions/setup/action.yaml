@@ -1,15 +1,21 @@
 name: Setup
-description: Install node, npm, and npm dependencies
+description: Install Nix, devenv, and npm dependencies
 
 runs:
   using: composite
   steps:
-    - name: Install node
-      uses: actions/setup-node@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+
+    - name: Enable devenv cache
+      uses: cachix/cachix-action@v16
       with:
-        node-version: lts/*
-        cache: npm
+        name: devenv
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile add nixpkgs#devenv
 
     - name: Install dependencies
+      shell: devenv shell bash -- -e {0}
       run: npm ci
-      shell: sh

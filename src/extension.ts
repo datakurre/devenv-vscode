@@ -1,34 +1,42 @@
 import path from 'path'
 import vscode from 'vscode'
-import { Checksum } from './checksum'
+import { checksum } from './checksum'
 import * as command from './command'
 import config from './config'
-import * as direnv from './direnv'
-import { Data, isInternal } from './direnv'
+import * as devenv from './devenv'
+import { Data } from './devenv'
 import * as status from './status'
 
 const enum Cached {
-	checksum = 'direnv.checksum',
-	environment = 'direnv.environment',
-	cwdOverride = 'direnv.cwdOverride',
+	checksum = 'devenv.checksum',
+	environment = 'devenv.environment',
+	cwdOverride = 'devenv.cwdOverride',
 }
 type EnvCache = [string, string | undefined][]
 
-const installationUri = vscode.Uri.parse('https://direnv.net/docs/installation.html')
+const installationUri = vscode.Uri.parse('https://devenv.sh/getting-started')
 
-class Direnv implements vscode.Disposable {
-	private output = vscode.window.createOutputChannel('direnv')
-	private backup = new Map<string, string | undefined>()
+/**
+ * Represents the original value of a tracked environment variable:
+ * - `{ existed: false }` — the variable was not set before devenv loaded it (newly added)
+ * - `{ existed: true; value: string }` — the variable had a previous value
+ */
+type OriginalValue = { existed: false } | { existed: true; value: string }
+
+class Devenv implements vscode.Disposable {
+	private output = vscode.window.createOutputChannel('devenv')
+	private backup = new Map<string, OriginalValue>()
 	private willLoad = new vscode.EventEmitter<void>()
 	private didLoad = new vscode.EventEmitter<Data>()
 	private loaded = new vscode.EventEmitter<void>()
 	private failed = new vscode.EventEmitter<unknown>()
-	private blocked = new vscode.EventEmitter<direnv.BlockedError>()
-	private viewBlocked = new vscode.EventEmitter<string>()
 	private didUpdate = new vscode.EventEmitter<void>()
-	private blockedPath?: string
-	private cwdOverride?: string
+	private cwdOverride: string | undefined = undefined
 	private watchers = vscode.Disposable.from()
+	/** Keys that were already in effect before this load cycle began. */
+	private knownKeys = new Set<string>()
+	/** True when the current load follows a restore (cache hit) — environment already applied. */
+	private isRestoreCycle = false
 
 	constructor(
 		private context: vscode.ExtensionContext,
@@ -38,8 +46,6 @@ class Direnv implements vscode.Disposable {
 		this.didLoad.event((e) => this.onDidLoad(e))
 		this.loaded.event(() => this.onLoaded())
 		this.failed.event((e) => this.onFailed(e))
-		this.blocked.event((e) => this.onBlocked(e))
-		this.viewBlocked.event((e) => this.onViewBlocked(e))
 		this.didUpdate.event(() => this.onDidUpdate())
 	}
 
@@ -57,24 +63,10 @@ class Direnv implements vscode.Disposable {
 		this.watchers.dispose()
 	}
 
-	async allow(path: string) {
-		await this.try(async () => {
-			await direnv.allow(path)
-			this.willLoad.fire()
-		})
-	}
-
-	async block(path: string) {
-		await this.try(async () => {
-			await direnv.block(path)
-			this.willLoad.fire()
-		})
-	}
-
-	didOpen(path: string) {
-		if (this.blockedPath === path) {
-			this.viewBlocked.fire(path)
-		}
+	async open(filePath?: string) {
+		filePath ??= path.join(devenv.cwd(), 'devenv.nix')
+		const uri = await uriFor(filePath)
+		await vscode.commands.executeCommand('vscode.open', uri)
 	}
 
 	async configurationChanged(event: vscode.ConfigurationChangeEvent) {
@@ -85,42 +77,6 @@ class Direnv implements vscode.Disposable {
 		if (config.status.isAffectedBy(event)) {
 			this.status.refresh()
 		}
-	}
-
-	async create() {
-		await this.open(await direnv.create())
-	}
-
-	async open(path?: string) {
-		path ??= await direnv.find()
-		const uri = await uriFor(path)
-		await vscode.commands.executeCommand('vscode.open', uri)
-		this.didOpen(path)
-	}
-
-	async loadEnvrc(uri?: vscode.Uri) {
-		if (!uri) {
-			const options: vscode.OpenDialogOptions = {
-				canSelectFiles: true,
-				canSelectFolders: false,
-				canSelectMany: false,
-				defaultUri: vscode.Uri.file(direnv.cwd()),
-				filters: { ['.envrc']: ['envrc'] },
-				openLabel: 'Load',
-				title: 'Select .envrc to load',
-			}
-			const uris = await vscode.window.showOpenDialog(options)
-			if (uris === undefined) return
-			if (uris.length !== 1) return
-			uri = uris[0]
-		}
-
-		if (path.basename(uri.path) !== '.envrc') {
-			await vscode.window.showErrorMessage('direnv: Not a .envrc!')
-			return
-		}
-		this.cwdOverride = path.dirname(uri.path)
-		this.willLoad.fire()
 	}
 
 	async reload() {
@@ -137,37 +93,39 @@ class Direnv implements vscode.Disposable {
 	restore() {
 		const data = this.restoreCache()
 		this.updateEnvironment(data)
+		// Record which keys are already applied from the cache so that a
+		// subsequent load with the same keys does not trigger a restart prompt.
+		this.knownKeys = new Set(this.backup.keys())
+		this.isRestoreCycle = data !== undefined
 		void this.load()
 	}
 
 	private restoreCache(): Data | undefined {
-		this.cwdOverride = this.cache.get<string>(Cached.cwdOverride)
-		const checksum = this.cache.get<string>(Cached.checksum)
-		if (checksum === undefined) return
+		this.cwdOverride = this.cache.get<string>(Cached.cwdOverride) ?? undefined
+		const storedChecksum = this.cache.get<string>(Cached.checksum)
+		if (storedChecksum === undefined) return
 		const entries = this.cache.get<EnvCache>(Cached.environment)
 		if (!Array.isArray(entries)) return
 		const data = new Map(entries.map(([key, value]) => [key, value ?? null]))
-		const hash = new Checksum()
-		for (const [key] of data) {
-			hash.update(key, process.env[key])
-		}
-		if (checksum !== hash.digest()) return
+		const digest = checksum([...data.keys()].map((key) => [key, process.env[key]]))
+		if (storedChecksum !== digest) return
 		return data
 	}
 
 	private async updateCache() {
-		const hash = new Checksum()
 		const entries: EnvCache = []
-		for (const [key, value] of this.backup) {
-			hash.update(key, value)
+		const checksumEntries: [string, string | undefined][] = []
+		for (const [key, original] of this.backup) {
+			checksumEntries.push([key, original.existed ? original.value : undefined])
 			entries.push([key, process.env[key]])
 		}
-		await this.cache.update(Cached.checksum, hash.digest())
+		await this.cache.update(Cached.checksum, checksum(checksumEntries))
 		await this.cache.update(Cached.environment, entries)
 		await this.cache.update(Cached.cwdOverride, this.cwdOverride)
 	}
 
 	private async resetCache() {
+		await this.cache.update(Cached.checksum, undefined)
 		await this.cache.update(Cached.environment, undefined)
 		await this.cache.update(Cached.cwdOverride, undefined)
 	}
@@ -184,11 +142,12 @@ class Direnv implements vscode.Disposable {
 		return watcher
 	}
 
-	private updateWatchers(data?: Data) {
+	private updateWatchers() {
 		this.watchers.dispose()
 		if (config.watchForChanges.get()) {
+			const root = this.cwdOverride ?? devenv.cwd()
 			this.watchers = vscode.Disposable.from(
-				...direnv.watchedPaths(data).map((it) => this.createWatcher(it)),
+				...devenv.watchedPaths(root).map((it) => this.createWatcher(it)),
 			)
 		}
 	}
@@ -196,41 +155,55 @@ class Direnv implements vscode.Disposable {
 	private updateEnvironment(data?: Data) {
 		if (data === undefined) return
 		// Avoid updating the environment & cleaning out watchers if data is empty
-		// such as when `direnv.dump()` is called twice without changes
+		// such as when `devenv.dump()` is called twice without changes
 		if (data.size === 0) return
 		for (const [key, value] of data) {
 			if (!this.backup.has(key)) {
 				// keep the oldest value
-				this.backup.set(key, process.env[key])
+				const prev = process.env[key]
+				this.backup.set(
+					key,
+					prev === undefined ? { existed: false } : { existed: true, value: prev },
+				)
 			}
-
-			this.updateTerminalEnv(key, value)
-			this.updateProcessEnv(key, value)
+			this.applyEntry(key, value)
 		}
-		this.updateWatchers(data)
+		this.updateWatchers()
 	}
 
-	private resetEnvironment(data?: Data) {
-		for (const [key, value] of this.backup) {
-			this.updateProcessEnv(key, value)
+	private resetEnvironment() {
+		for (const [key, original] of this.backup) {
+			// Restore original process env; terminal env is fully cleared below
+			if (!original.existed) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key]
+			} else {
+				process.env[key] = original.value
+			}
 		}
 		this.backup.clear()
 		this.environment.clear()
 		this.cwdOverride = undefined
-		this.updateWatchers(data)
+		this.updateWatchers()
 	}
 
-	private updateProcessEnv(key: string, value: string | null | undefined) {
-		if (value === null || value === undefined) {
+	/**
+	 * Applies a single environment entry to both the process env and the
+	 * VS Code terminal env collection.
+	 * `null` means the variable should be unset; `undefined` is never passed here.
+	 */
+	private applyEntry(key: string, value: string | null) {
+		// Process environment
+		if (value === null) {
 			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
 			delete process.env[key]
 		} else {
 			process.env[key] = value
 		}
-	}
-
-	private updateTerminalEnv(key: string, value: string | null) {
-		if (value === null && this.backup.get(key) === undefined) {
+		// Terminal environment collection
+		const original = this.backup.get(key)
+		if (value === null && (original === undefined || !original.existed)) {
+			// Variable did not exist before and should be unset — just leave it absent
 			this.environment.delete(key)
 		} else {
 			this.environment.replace(key, value ?? '') // can't unset, set to empty instead
@@ -238,13 +211,14 @@ class Direnv implements vscode.Disposable {
 	}
 
 	private async load() {
-		await this.try(async () => {
-			await direnv.test()
+		await this.attempt(async () => {
+			this.output.appendLine(`PATH: ${devenv.augmentedPath()}`)
+			await devenv.test()
 			this.willLoad.fire()
 		})
 	}
 
-	private async try<T>(callback: () => Promise<T>) {
+	private async attempt<T>(callback: () => Promise<T>) {
 		try {
 			await callback()
 		} catch (err) {
@@ -253,15 +227,12 @@ class Direnv implements vscode.Disposable {
 	}
 
 	private async onWillLoad() {
-		this.blockedPath = undefined
 		this.status.update(status.State.loading)
 		try {
-			const data = await direnv.dump(this.cwdOverride)
+			const data = await devenv.dump(this.cwdOverride)
 			this.didLoad.fire(data)
 		} catch (err) {
-			if (err instanceof direnv.BlockedError) {
-				this.blocked.fire(err)
-			}
+			this.failed.fire(err)
 		}
 	}
 
@@ -269,53 +240,40 @@ class Direnv implements vscode.Disposable {
 		this.updateEnvironment(data)
 		await this.updateCache()
 		this.loaded.fire()
-		if ([...data.keys()].every(isInternal)) return
-		this.didUpdate.fire()
+		const currentKeys = new Set(this.backup.keys())
+		const hasNewKeys = [...currentKeys].some((k) => !this.knownKeys.has(k))
+		const hasRemovedKeys = [...this.knownKeys].some((k) => !currentKeys.has(k))
+		const environmentChanged = hasNewKeys || hasRemovedKeys
+		this.knownKeys = currentKeys
+		const wasRestoreCycle = this.isRestoreCycle
+		this.isRestoreCycle = false
+		if (environmentChanged && !wasRestoreCycle) {
+			this.didUpdate.fire()
+		}
 	}
 
 	private onLoaded() {
-		let state = status.State.empty
 		if (this.backup.size) {
-			let added = 0
-			let changed = 0
-			let removed = 0
-			for (const [key, was] of this.backup) {
-				if (isInternal(key)) continue
-				if (was === undefined) {
-					added += 1
-					this.output.appendLine(`added: ${key}`)
-				} else if (key in process.env) {
-					changed += 1
-					this.output.appendLine(`changed: ${key}`)
-				} else {
-					removed += 1
-					this.output.appendLine(`removed: ${key}`)
-				}
-				if (was) {
-					this.output.appendLine(`was: ${was}`)
-				}
-				const now = process.env[key]
-				if (now) {
-					this.output.appendLine(`now: ${now}`)
-				}
-			}
-
-			state = status.State.loaded({
-				added,
-				changed,
-				removed,
-				currentFolder: this.cwdOverride,
-			})
+			const delta = diffEnvironment(this.backup, this.output)
+			const relativeFolder = this.cwdOverride
+				? path.relative(devenv.cwd(), this.cwdOverride) || undefined
+				: undefined
+			const loaded: status.Delta = relativeFolder
+				? { ...delta, relativeFolder }
+				: delta
+			this.status.update(status.State.loaded(loaded))
+		} else {
+			this.status.update(status.State.empty)
 		}
-		this.status.update(state)
 	}
 
 	private async onFailed(err: unknown) {
+		this.output.appendLine(`error: ${String(err)}`)
 		this.status.update(status.State.failed)
-		if (err instanceof direnv.CommandNotFoundError) {
+		if (err instanceof devenv.CommandNotFoundError) {
 			const options = ['Install', 'Configure']
 			const choice = await vscode.window.showErrorMessage(
-				`direnv error: ${err.message}`,
+				`devenv error: ${err.message}`,
 				...options,
 			)
 			if (choice === 'Install') {
@@ -328,35 +286,8 @@ class Direnv implements vscode.Disposable {
 		}
 		const msg = message(err)
 		if (msg !== undefined) {
-			await vscode.window.showErrorMessage(`direnv error: ${msg}`)
-		}
-	}
-
-	private async onBlocked(e: direnv.BlockedError) {
-		this.blockedPath = e.path
-		this.resetEnvironment(e.data)
-		await this.resetCache()
-		this.status.update(status.State.blocked(e.path))
-		const options = ['Allow', 'View']
-		const choice = await vscode.window.showWarningMessage(
-			`direnv: ${e.path} is blocked`,
-			...options,
-		)
-		if (choice === 'Allow') {
-			await this.allow(e.path)
-		}
-		if (choice === 'View') {
-			await this.open(e.path)
-		}
-	}
-
-	private async onViewBlocked(path: string) {
-		const choice = await vscode.window.showInformationMessage(
-			`direnv: Allow ${path}?`,
-			'Allow',
-		)
-		if (choice === 'Allow') {
-			await this.allow(path)
+			this.output.appendLine(`error details: ${msg}`)
+			await vscode.window.showErrorMessage(`devenv error: ${msg}`)
 		}
 	}
 
@@ -373,11 +304,39 @@ class Direnv implements vscode.Disposable {
 	private async shouldRestart() {
 		if (config.restart.automatic.get()) return true
 		const choice = await vscode.window.showWarningMessage(
-			`direnv: Environment updated. Restart extensions?`,
+			`devenv: Environment updated. Restart extensions?`,
 			'Restart',
 		)
 		return choice === 'Restart'
 	}
+}
+
+type Diff = { added: number; changed: number; removed: number }
+
+function diffEnvironment(backup: Map<string, OriginalValue>, output: vscode.OutputChannel): Diff {
+	let added = 0
+	let changed = 0
+	let removed = 0
+	for (const [key, original] of backup) {
+		if (!original.existed) {
+			added += 1
+			output.appendLine(`added: ${key}`)
+		} else if (key in process.env) {
+			changed += 1
+			output.appendLine(`changed: ${key}`)
+		} else {
+			removed += 1
+			output.appendLine(`removed: ${key}`)
+		}
+		if (original.existed) {
+			output.appendLine(`was: ${original.value}`)
+		}
+		const now = process.env[key]
+		if (now) {
+			output.appendLine(`now: ${now}`)
+		}
+	}
+	return { added, changed, removed }
 }
 
 function message(err: unknown) {
@@ -387,8 +346,8 @@ function message(err: unknown) {
 	return
 }
 
-async function uriFor(path: string) {
-	const uri = vscode.Uri.file(path)
+async function uriFor(filePath: string) {
+	const uri = vscode.Uri.file(filePath)
 	try {
 		await vscode.workspace.fs.stat(uri)
 		return uri
@@ -399,56 +358,21 @@ async function uriFor(path: string) {
 
 export function activate(context: vscode.ExtensionContext) {
 	const statusItem = new status.Item(vscode.window.createStatusBarItem())
-	const instance = new Direnv(context, statusItem)
+	const instance = new Devenv(context, statusItem)
 	context.subscriptions.push(instance)
 	context.subscriptions.push(
-		vscode.commands.registerCommand(command.Direnv.reload, async () => {
+		vscode.commands.registerCommand(command.Devenv.reload, async () => {
 			await instance.reload()
 		}),
-		vscode.commands.registerCommand(command.Direnv.reset, async () => {
+		vscode.commands.registerCommand(command.Devenv.reset, async () => {
 			await instance.reset()
 		}),
-		vscode.commands.registerCommand(command.Direnv.allow, async () => {
-			const path = vscode.window.activeTextEditor?.document.fileName
-			if (path !== undefined) {
-				await instance.allow(path)
-			}
-		}),
-		vscode.commands.registerCommand(command.Direnv.block, async () => {
-			const path = vscode.window.activeTextEditor?.document.fileName
-			if (path !== undefined) {
-				await instance.block(path)
-			}
-		}),
-		vscode.commands.registerCommand(command.Direnv.create, async () => {
-			await instance.create()
-		}),
-		vscode.commands.registerCommand(command.Direnv.open, async () => {
+		vscode.commands.registerCommand(command.Devenv.open, async () => {
 			await instance.open()
-		}),
-		vscode.commands.registerCommand(
-			command.Direnv.loadEnvrc,
-			async (uri?: vscode.Uri) => {
-				await instance.loadEnvrc(uri)
-			},
-		),
-		vscode.window.tabGroups.onDidChangeTabs((e) => {
-			for (const tab of e.opened) {
-				if (tab.input instanceof vscode.TabInputText) {
-					instance.didOpen(tab.input.uri.path)
-				}
-			}
-		}),
-		vscode.workspace.onDidOpenTextDocument((e) => {
-			instance.didOpen(e.fileName)
 		}),
 		vscode.workspace.onDidChangeConfiguration(async (e) => {
 			await instance.configurationChanged(e)
 		}),
 	)
 	instance.restore()
-}
-
-export function deactivate() {
-	// nothing
 }

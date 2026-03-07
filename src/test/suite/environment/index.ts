@@ -1,8 +1,6 @@
-import path from 'path'
+import { runSuite, workspaceRoot } from '..'
 
-import { runSuite } from '..'
-
-export const workspaceRoot = path.resolve(__dirname, '../../../../test/workspace')
+export { workspaceRoot }
 
 export async function run() {
 	await runSuite(workspaceRoot, __dirname)

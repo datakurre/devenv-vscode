@@ -1,6 +1,6 @@
 import vscode from 'vscode'
 
-const root = 'direnv'
+const root = 'devenv'
 
 class Value<T> {
 	constructor(readonly value: T) {}
@@ -17,8 +17,8 @@ type Setting<T> = {
 	open(): Promise<void>
 }
 
-type Settings<T> = Section & {
-	[Name in keyof T]: T[Name] extends Value<infer T> ? Setting<T> : Settings<T[Name]>
+type Settings<T extends object> = Section & {
+	[Name in keyof T]: T[Name] extends Value<infer U> ? Setting<U> : T[Name] extends object ? Settings<T[Name]> : never
 }
 
 function isAffectedBy(path: string[], event: vscode.ConfigurationChangeEvent): boolean {
@@ -71,7 +71,8 @@ export default section([root], {
 	extraEnv: value({}),
 	watchForChanges: value(true),
 	path: {
-		executable: value('direnv'),
+		executable: value('devenv'),
+		nixBinPaths: value([] as string[]),
 	},
 	status: {
 		showChangesCount: value(true),

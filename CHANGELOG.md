@@ -6,7 +6,18 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-## [0.17.0] - 2024-03-12
+## [0.1.0] - 2026-03-07
+### Added
+- Initial release as `cachix.devenv`, forked from the direnv VS Code extension
+- Load environment variables from `devenv print-dev-env` into VS Code terminals and tasks
+- Automatically augment PATH with standard Nix profile directories and common system paths so devenv and git are found when VS Code is launched as a GUI application
+- Set `HOME` from the OS passwd database to avoid Nix sandbox `HOME=/homeless-shelter` breaking devenv startup
+- Filter Nix build-sandbox variables (`HOME`, `PATH`, `TMP`, `NIX_*`, etc.) from being applied to the live VS Code session
+- Suppress spurious "Restart extensions?" prompts on restore cycles and unchanged reloads
+- New setting `devenv.path.nixBinPaths` for adding extra PATH directories in non-standard Nix installations
+- Log augmented PATH and full error details to the `devenv` output channel for easier diagnostics
+
+
 ### Added
 - Add direnv.watchForChanges setting
 
@@ -137,7 +148,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.0.1] - 2021-11-23
 - Initial release
 
-[Unreleased]: https://github.com/direnv/direnv-vscode/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/datakurre/devenv-vscode/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/datakurre/devenv-vscode/releases/tag/v0.1.0
+
+<!-- History below is from the upstream direnv VS Code extension (direnv/direnv-vscode) -->
 [0.17.0]: https://github.com/direnv/direnv-vscode/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/direnv/direnv-vscode/compare/v0.15.2...v0.16.0
 [0.15.2]: https://github.com/direnv/direnv-vscode/compare/v0.15.1...v0.15.2

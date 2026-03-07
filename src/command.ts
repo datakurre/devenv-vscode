@@ -1,9 +1,5 @@
-export const enum Direnv {
-	reload = 'direnv.reload',
-	reset = 'direnv.reset',
-	allow = 'direnv.allow',
-	block = 'direnv.block',
-	create = 'direnv.create',
-	open = 'direnv.open',
-	loadEnvrc = 'direnv.loadEnvrc',
+export const enum Devenv {
+	reload = 'devenv.reload',
+	reset = 'devenv.reset',
+	open = 'devenv.open',
 }

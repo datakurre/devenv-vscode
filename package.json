@@ -1,14 +1,14 @@
 {
-	"name": "direnv",
-	"displayName": "direnv",
-	"description": "unclutter your .profile",
-	"version": "0.17.0",
+	"name": "devenv",
+	"displayName": "devenv",
+	"description": "Declarative developer environments for Visual Studio Code",
+	"version": "0.1.0",
 	"preview": true,
 	"icon": "assets/icon.png",
 	"maintainers": [
 		{
-			"name": "The direnv VSCode extension team",
-			"url": "https://github.com/orgs/direnv/teams/vscode"
+			"name": "The devenv VSCode extension team",
+			"url": "https://github.com/orgs/cachix/teams/vscode"
 		}
 	],
 	"contributors": [
@@ -21,11 +21,11 @@
 			"url": "https://github.com/mkhl"
 		}
 	],
-	"publisher": "mkhl",
-	"license": "0BSD",
+	"publisher": "cachix",
+	"license": "ISC",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/direnv/direnv-vscode"
+		"url": "https://github.com/datakurre/devenv-vscode"
 	},
 	"engines": {
 		"vscode": "^1.71.0"
@@ -40,38 +40,47 @@
 	"capabilities": {
 		"untrustedWorkspaces": {
 			"supported": false,
-			"description": "direnv can run arbitrary shell code"
+			"description": "devenv can run arbitrary shell code"
 		}
 	},
 	"contributes": {
 		"configuration": {
-			"title": "direnv",
+			"title": "devenv",
 			"properties": {
-				"direnv.extraEnv": {
+				"devenv.extraEnv": {
 					"type": "object",
 					"scope": "machine-overridable",
-					"description": "Environment variables that will be set before running direnv",
+					"description": "Environment variables that will be set before running devenv",
 					"additionalProperties": {
 						"type": "string"
 					}
 				},
-				"direnv.watchForChanges": {
+				"devenv.watchForChanges": {
 					"type": "boolean",
 					"default": true,
 					"description": "Automatically reload environment on file changes"
 				},
-				"direnv.path.executable": {
+				"devenv.path.executable": {
 					"type": "string",
-					"default": "direnv",
+					"default": "devenv",
 					"scope": "machine-overridable",
-					"description": "Path to the direnv executable"
+					"description": "Path to the devenv executable. Use an absolute path (e.g. /nix/var/nix/profiles/default/bin/devenv) if devenv is not found automatically."
 				},
-				"direnv.status.showChangesCount": {
+				"devenv.path.nixBinPaths": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [],
+					"scope": "machine-overridable",
+					"description": "Additional directories to prepend to PATH when running devenv. The extension already prepends the standard Nix profile directories and common system paths automatically; use this setting only when your installation is in a non-standard location."
+				},
+				"devenv.status.showChangesCount": {
 					"type": "boolean",
 					"default": true,
 					"description": "Show the number of changed environment variables"
 				},
-				"direnv.restart.automatic": {
+				"devenv.restart.automatic": {
 					"type": "boolean",
 					"default": false,
 					"description": "Automatically restart extension host upon environment changes"
@@ -80,50 +89,35 @@
 		},
 		"commands": [
 			{
-				"command": "direnv.allow",
-				"title": "direnv: Allow this .envrc file"
+				"command": "devenv.open",
+				"title": "devenv: Open devenv.nix file"
 			},
 			{
-				"command": "direnv.block",
-				"title": "direnv: Block this .envrc file"
+				"command": "devenv.reload",
+				"title": "devenv: Reload environment"
 			},
 			{
-				"command": "direnv.create",
-				"title": "direnv: Create .envrc file"
-			},
-			{
-				"command": "direnv.open",
-				"title": "direnv: Open .envrc file"
-			},
-			{
-				"command": "direnv.reload",
-				"title": "direnv: Reload environment"
-			},
-			{
-				"command": "direnv.reset",
-				"title": "direnv: Reset and reload environment"
-			},
-			{
-				"command": "direnv.loadEnvrc",
-				"title": "direnv: Load .envrc file"
+				"command": "devenv.reset",
+				"title": "devenv: Reset and reload environment"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "direnv.allow",
-					"when": "editorLangId == shellscript"
+					"command": "devenv.open"
 				},
 				{
-					"command": "direnv.block",
-					"when": "editorLangId == shellscript"
+					"command": "devenv.reload"
+				},
+				{
+					"command": "devenv.reset"
 				}
 			],
 			"explorer/context": [
 				{
-					"when": "resourceFilename == .envrc",
-					"command": "direnv.loadEnvrc",
-					"group": "5_direnv@1"
+					"when": "resourceFilename == devenv.nix",
+					"command": "devenv.open",
+					"group": "5_devenv@1"
 				}
 			]
 		}
@@ -151,16 +145,18 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {
+		"@eslint/js": "^9.18.0",
 		"@types/mocha": "^10.0.7",
-		"@types/node": "16.x",
+		"@types/node": "16.18.101",
 		"@types/sinon": "^17.0.3",
 		"@types/vscode": "1.71.x",
-		"@typescript-eslint/eslint-plugin": "^7.17.0",
-		"@typescript-eslint/parser": "^7.17.0",
+		"@typescript-eslint/eslint-plugin": "^8.21.0",
+		"@typescript-eslint/parser": "^8.21.0",
+		"typescript-eslint": "^8.21.0",
 		"@vscode/test-electron": "^2.4.1",
 		"@vscode/vsce": "^2.31.1",
-		"esbuild": "^0.23.1",
-		"eslint": "^8.57.0",
+		"esbuild": "^0.27.3",
+		"eslint": "^9.18.0",
 		"eslint-config-prettier": "^9.1.0",
 		"glob": "^10.4.2",
 		"mocha": "^10.7.3",

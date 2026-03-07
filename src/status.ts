@@ -1,66 +1,101 @@
-import path from 'path'
 import vscode from 'vscode'
 import * as command from './command'
-import * as direnv from './direnv'
 import config from './config'
 
 export type Delta = {
 	added: number
 	changed: number
 	removed: number
-	currentFolder?: string
+	/** Relative path string to display in the status bar, already computed by the caller. */
+	relativeFolder?: string
 }
 
-export class State {
-	private constructor(
-		readonly text: string,
-		readonly tooltip: string,
-		readonly command?: command.Direnv,
-		readonly refresh: () => State = () => this,
-	) {}
+// ---------------------------------------------------------------------------
+// Pure formatting helper
+// ---------------------------------------------------------------------------
 
-	static loading = new State('$(folder)$(sync~spin)', 'direnv loading…')
-	static empty = new State('$(folder)', 'direnv empty\nCreate…', command.Direnv.create)
-	static loaded(delta: Delta): State {
-		let text = '$(folder-active)'
-		const tooltip = [
-			`direnv loaded: ${delta.added} added, ${delta.changed} changed, ${delta.removed} removed`,
-		]
-		if (delta.currentFolder) {
-			const folder = path.relative(direnv.cwd(), delta.currentFolder)
-			if (folder) {
-				text += ` ${folder}`
-				tooltip.push(`in: ${folder}`)
-			}
-		}
-		if (config.status.showChangesCount.get()) {
-			text += ` +${delta.added}/~${delta.changed}/-${delta.removed}`
-		}
-		tooltip.push('Reload…')
-		return new State(text, tooltip.join(`\n`), command.Direnv.reload, () =>
-			State.loaded(delta),
-		)
+function formatDelta(delta: Delta): { text: string; tooltip: string } {
+	let text = '$(folder-active)'
+	const tooltip = [
+		`devenv loaded: ${delta.added} added, ${delta.changed} changed, ${delta.removed} removed`,
+	]
+	if (delta.relativeFolder) {
+		text += ` ${delta.relativeFolder}`
+		tooltip.push(`in: ${delta.relativeFolder}`)
 	}
-	static blocked(path: string): State {
-		return new State(
-			'$(folder)$(shield)',
-			`direnv blocked: ${path}\nReview…`,
-			command.Direnv.open,
-			() => State.blocked(path),
-		)
+	if (config.status.showChangesCount.get()) {
+		text += ` +${delta.added}/~${delta.changed}/-${delta.removed}`
 	}
-	static failed = new State(
-		'$(folder)$(flame)',
-		'direnv failed\nReload…',
-		command.Direnv.reload,
-	)
+	tooltip.push('Reload…')
+	return { text, tooltip: tooltip.join('\n') }
+}
+
+// ---------------------------------------------------------------------------
+// Discriminated union
+// ---------------------------------------------------------------------------
+
+type LoadingState = { readonly kind: 'loading' }
+type EmptyState = { readonly kind: 'empty' }
+type LoadedState = { readonly kind: 'loaded'; readonly delta: Delta }
+type FailedState = { readonly kind: 'failed' }
+
+export type State = LoadingState | EmptyState | LoadedState | FailedState
+
+export const State = {
+	loading: { kind: 'loading' } as LoadingState,
+	empty: { kind: 'empty' } as EmptyState,
+	loaded: (delta: Delta): LoadedState => ({ kind: 'loaded', delta }),
+	failed: { kind: 'failed' } as FailedState,
+} as const
+
+// ---------------------------------------------------------------------------
+// Status bar item
+// ---------------------------------------------------------------------------
+
+function stateText(state: State): string {
+	switch (state.kind) {
+		case 'loading':
+			return '$(folder)$(sync~spin)'
+		case 'empty':
+			return '$(folder)'
+		case 'loaded':
+			return formatDelta(state.delta).text
+		case 'failed':
+			return '$(folder)$(flame)'
+	}
+}
+
+function stateTooltip(state: State): string {
+	switch (state.kind) {
+		case 'loading':
+			return 'devenv loading…'
+		case 'empty':
+			return 'devenv empty\nOpen devenv.nix…'
+		case 'loaded':
+			return formatDelta(state.delta).tooltip
+		case 'failed':
+			return 'devenv failed\nReload…'
+	}
+}
+
+function stateCommand(state: State): command.Devenv | undefined {
+	switch (state.kind) {
+		case 'loading':
+			return undefined
+		case 'empty':
+			return command.Devenv.open
+		case 'loaded':
+			return command.Devenv.reload
+		case 'failed':
+			return command.Devenv.reload
+	}
 }
 
 export class Item implements vscode.Disposable {
 	private state: State = State.empty
 
 	constructor(private item: vscode.StatusBarItem) {
-		item.text = State.empty.text
+		item.text = stateText(State.empty)
 		item.show()
 	}
 
@@ -70,12 +105,12 @@ export class Item implements vscode.Disposable {
 
 	update(state: State) {
 		this.state = state
-		this.item.text = state.text
-		this.item.tooltip = state.tooltip
-		this.item.command = state.command
+		this.item.text = stateText(state)
+		this.item.tooltip = stateTooltip(state)
+		this.item.command = stateCommand(state)
 	}
 
 	refresh() {
-		this.update(this.state.refresh())
+		this.update(this.state)
 	}
 }

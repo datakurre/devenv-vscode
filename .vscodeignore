@@ -1,3 +1,6 @@
+.cache/
+.devcontainer.json
+.devenv/
 .direnv/
 .github/
 .vscode/
@@ -18,5 +21,8 @@ result
 **/tsconfig.json
 **/.eslintrc.json
 **/.prettierrc.json
+**/.prettierignore
 **/*.map
 **/*.ts
+devenv.local.*
+Makefile

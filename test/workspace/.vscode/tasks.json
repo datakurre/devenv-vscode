@@ -5,16 +5,16 @@
 	"tasks": [
 		{
 			"label": "test-task",
-			"detail": "test that the .envrc environment is available in the task shell",
+			"detail": "test that the devenv environment is available in the task shell",
 			"type": "shell",
-			"command": "test -n \"$VARIABLE\" && test -z \"$PREDEFINED\"",
+			"command": "test -n \"$VARIABLE\"",
 			"problemMatcher": []
 		},
 		{
 			"label": "test-process",
-			"detail": "test that the .envrc environment is available in process.env",
+			"detail": "test that the devenv environment is available in process.env",
 			"type": "shell",
-			"command": "test -n \"${env:VARIABLE}\" && test -z \"${env:PREDEFINED}\"",
+			"command": "test -n \"${env:VARIABLE}\"",
 			"problemMatcher": []
 		},
 	]

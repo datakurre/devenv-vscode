@@ -22,8 +22,3 @@ export async function assertEnvironmentIsLoaded() {
 	assert.equal(await runTask('test-task'), 0, 'environment is loaded in task')
 	assert.equal(await runTask('test-process'), 0, 'environment is loaded in process')
 }
-
-export async function assertEnvironmentIsNotLoaded() {
-	assert.notEqual(await runTask('test-task'), 0, 'environment is not loaded in task')
-	assert.notEqual(await runTask('test-process'), 0, 'environment is not loaded in process')
-}
