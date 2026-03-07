@@ -23,7 +23,6 @@
 	],
 	"publisher": "cachix",
 	"license": "0BSD",
-	"type": "module",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/datakurre/devenv-vscode"
