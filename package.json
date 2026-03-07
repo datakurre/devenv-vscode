@@ -160,7 +160,7 @@
 		"@vscode/test-electron": "^2.5.2",
 		"@vscode/vsce": "^3.7.1",
 		"esbuild": "^0.27.3",
-		"eslint": "^9.18.0",
+		"eslint": "^10.0.3",
 		"eslint-config-prettier": "^9.1.0",
 		"glob": "^13.0.6",
 		"mocha": "^11.7.5",
