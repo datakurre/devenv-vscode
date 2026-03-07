@@ -22,7 +22,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Set artifact name
-        shell: devenv shell bash -- -e {0}
+        shell: bash
         run: |
           PROJECT_NAME="$(node --print 'require("./package.json").name')"
           case "$GITHUB_REF_TYPE" in
@@ -32,7 +32,7 @@ jobs:
           echo "artifact_name=$PROJECT_NAME-$PROJECT_VERSION.vsix" >> "$GITHUB_ENV"
 
       - name: Build
-        shell: devenv shell bash -- -e {0}
+        shell: bash
         run: |
           npm run package -- --out "${{ env.artifact_name }}"
 
@@ -53,7 +53,7 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Lint
-        shell: devenv shell bash -- -e {0}
+        shell: bash
         run: npm run lint
 
   Test:
@@ -67,5 +67,5 @@ jobs:
         uses: ./.github/actions/setup
 
       - name: Test
-        shell: devenv shell bash -- -e {0}
+        shell: bash
         run: xvfb-run -a npm test
