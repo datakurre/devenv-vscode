@@ -37,7 +37,7 @@ jobs:
           npm run package -- --out "${{ env.artifact_name }}"
 
       - name: Upload
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: devenv-vscode
           path: ${{ env.artifact_name }}
