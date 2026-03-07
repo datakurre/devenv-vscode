@@ -18,7 +18,7 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 	async function removeWatched() {
 		try {
 			await fs.rm(path.join(workspaceRoot, 'devenv.local.nix'))
-		} catch (_) {
+		} catch {
 			// ignore
 		}
 	}

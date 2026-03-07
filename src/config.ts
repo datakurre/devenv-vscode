@@ -18,7 +18,11 @@ type Setting<T> = {
 }
 
 type Settings<T extends object> = Section & {
-	[Name in keyof T]: T[Name] extends Value<infer U> ? Setting<U> : T[Name] extends object ? Settings<T[Name]> : never
+	[Name in keyof T]: T[Name] extends Value<infer U>
+		? Setting<U>
+		: T[Name] extends object
+			? Settings<T[Name]>
+			: never
 }
 
 function isAffectedBy(path: string[], event: vscode.ConfigurationChangeEvent): boolean {

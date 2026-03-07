@@ -93,7 +93,8 @@ async function devenv(
 	} catch (e) {
 		if (
 			e instanceof Error &&
-			'path' in e && 'code' in e &&
+			'path' in e &&
+			'code' in e &&
 			e.path === command &&
 			(e.code === 'ENOENT' || e.code === 'EACCES')
 		) {

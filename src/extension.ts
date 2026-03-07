@@ -258,9 +258,7 @@ class Devenv implements vscode.Disposable {
 			const relativeFolder = this.cwdOverride
 				? path.relative(devenv.cwd(), this.cwdOverride) || undefined
 				: undefined
-			const loaded: status.Delta = relativeFolder
-				? { ...delta, relativeFolder }
-				: delta
+			const loaded: status.Delta = relativeFolder ? { ...delta, relativeFolder } : delta
 			this.status.update(status.State.loaded(loaded))
 		} else {
 			this.status.update(status.State.empty)
@@ -313,7 +311,10 @@ class Devenv implements vscode.Disposable {
 
 type Diff = { added: number; changed: number; removed: number }
 
-function diffEnvironment(backup: Map<string, OriginalValue>, output: vscode.OutputChannel): Diff {
+function diffEnvironment(
+	backup: Map<string, OriginalValue>,
+	output: vscode.OutputChannel,
+): Diff {
 	let added = 0
 	let changed = 0
 	let removed = 0
@@ -351,7 +352,7 @@ async function uriFor(filePath: string) {
 	try {
 		await vscode.workspace.fs.stat(uri)
 		return uri
-	} catch (_) {
+	} catch {
 		return uri.with({ scheme: 'untitled' })
 	}
 }

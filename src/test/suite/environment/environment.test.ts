@@ -9,10 +9,7 @@ import { assertEnvironmentIsLoaded } from '../assertions'
  * Polls `condition` every `intervalMs` until it resolves without throwing or
  * `timeoutMs` elapses, at which point the last error is re-thrown.
  */
-async function waitUntil(
-	condition: () => Promise<void>,
-	{ intervalMs = 500, timeoutMs = 30_000 } = {},
-): Promise<void> {
+async function waitUntil(condition: () => Promise<void>, { intervalMs = 500, timeoutMs = 30_000 } = {}): Promise<void> {
 	const deadline = Date.now() + timeoutMs
 	let lastError: unknown
 	while (Date.now() < deadline) {
@@ -42,7 +39,10 @@ context('custom environments in the test workspace', function () {
 	specify('changing a watched file reloads the custom environment', async function () {
 		await vscode.commands.executeCommand('devenv.reload')
 		const watched = vscode.Uri.file(path.join(workspaceRoot, 'devenv.local.nix'))
-		await vscode.workspace.fs.writeFile(watched, new TextEncoder().encode('{ pkgs, ... }: { env.VARIABLE = pkgs.lib.mkForce ""; }'))
+		await vscode.workspace.fs.writeFile(
+			watched,
+			new TextEncoder().encode('{ pkgs, ... }: { env.VARIABLE = pkgs.lib.mkForce ""; }'),
+		)
 		await waitUntil(() => assertEnvironmentIsLoaded(), { timeoutMs: 30_000 })
 	})
 })

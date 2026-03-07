@@ -49,10 +49,10 @@ async function main(requestedSuites: string[]) {
 		for (const workspace of workspaces) {
 			const suitePath = path.resolve(__dirname, `suite/${suite}/${workspace}/`)
 			const workspacePath = path.resolve(__dirname, `../../test/workspace/${workspace}`)
-			if (!await suiteExists(suitePath)) continue
+			if (!(await suiteExists(suitePath))) continue
 			try {
 				await test(suitePath, workspacePath)
-			} catch (err) {
+			} catch {
 				failed = true
 			}
 		}
