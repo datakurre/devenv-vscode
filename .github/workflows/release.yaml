@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  Release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Wait for Build workflow
+        uses: lewagon/wait-on-check-action@v1.3.4
+        with:
+          ref: ${{ github.sha }}
+          check-name: Build
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 15
+
+      - name: Extract version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Extract changelog notes
+        run: |
+          awk -v tag="[${{ env.version }}]" '
+            /^## / { want = ($2 == tag) }
+            want
+          ' CHANGELOG.md | sed 1d > release-notes.md
+
+      - name: Download build artifact
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: build.yaml
+          commit: ${{ github.sha }}
+          name: devenv-vscode
+          path: dist
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: dist/*.vsix
+          fail_on_unmatched_files: true

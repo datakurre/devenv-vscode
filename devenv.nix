@@ -6,6 +6,5 @@
 
   packages = [
     pkgs.nixfmt
-    pkgs.nodejs_20
   ];
 }
