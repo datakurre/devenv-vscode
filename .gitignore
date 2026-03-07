@@ -1,4 +1,5 @@
 .envrc.local
+job-logs.txt
 out
 dist
 node_modules
