@@ -22,6 +22,10 @@ runs:
       shell: bash
       run: nix profile add nixpkgs#devenv
 
+    - name: Pre-warm devenv environment
+      shell: bash
+      run: cd test/workspace && devenv test
+
     - name: Install dependencies
       shell: bash
       run: npm ci

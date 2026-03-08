@@ -45,7 +45,7 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 		ui: 'bdd',
 		color: true,
 		slow: 1000,
-		timeout: 10000,
+		timeout: 60000,
 		rootHooks: {
 			async beforeAll() {
 				await requireDevenv()

@@ -33,7 +33,7 @@ context('custom environments in the test workspace', function () {
 
 	specify('devenv.reload loads the custom environment', async function () {
 		await vscode.commands.executeCommand('devenv.reload')
-		await assertEnvironmentIsLoaded()
+		await waitUntil(() => assertEnvironmentIsLoaded())
 	})
 
 	specify('changing a watched file reloads the custom environment', async function () {

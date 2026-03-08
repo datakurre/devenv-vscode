@@ -110,7 +110,15 @@ export async function test(): Promise<void> {
 
 export async function dump(cwdOverride?: string): Promise<Data> {
 	const { stdout } = await devenv(['print-dev-env', '--json'], undefined, cwdOverride)
-	return parse(stdout)
+	const data = parse(stdout)
+	// Filter out keys that come from the user's extraEnv configuration.
+	// These are injected into the devenv child process but should not be
+	// treated as part of the devenv-managed environment.
+	const extra = config.extraEnv.get()
+	for (const key of Object.keys(extra)) {
+		data.delete(key)
+	}
+	return data
 }
 
 type VariableEntry =
