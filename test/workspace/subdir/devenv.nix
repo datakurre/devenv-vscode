@@ -1,0 +1,5 @@
+{ pkgs, ... }:
+
+{
+  env.VARIABLE = "value";
+}
