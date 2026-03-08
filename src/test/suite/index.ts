@@ -33,10 +33,6 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 		await vscode.commands.executeCommand('workbench.action.closeAllEditors')
 	}
 
-	async function closeWorkspace() {
-		await vscode.commands.executeCommand('workbench.action.closeFolder')
-	}
-
 	async function resetExtension() {
 		await vscode.commands.executeCommand('devenv.reset')
 	}
@@ -60,7 +56,7 @@ export async function runSuite(workspaceRoot: string, testRoot: string, testPatt
 				await removeWatched()
 			},
 			async afterAll() {
-				await closeWorkspace()
+				// nothing to do — each suite runs in its own VS Code instance
 			},
 		},
 	})
