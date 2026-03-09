@@ -50,7 +50,7 @@ jobs:
           ' CHANGELOG.md | sed 1d > release-notes.md
 
       - name: Download build artifact
-        uses: dawidd6/action-download-artifact@v6
+        uses: dawidd6/action-download-artifact@v16
         with:
           workflow: build.yaml
           commit: ${{ github.sha }}
