@@ -132,7 +132,7 @@ export async function dump(cwdOverride?: string): Promise<Data> {
 	const configProfile = config.profile.get()
 	const profile = configProfile ?? (await readProfile(root))
 	const printDevEnvArgs = profile
-		? ['--profile', profile, 'print-dev-env', '--json']
+		? [`--profile=${profile}`, 'print-dev-env', '--json']
 		: ['print-dev-env', '--json']
 	const { stdout } = await devenv(printDevEnvArgs, undefined, cwdOverride)
 	const data = parse(stdout)
