@@ -71,7 +71,11 @@ class Devenv implements vscode.Disposable {
 
 	async configurationChanged(event: vscode.ConfigurationChangeEvent) {
 		if (!config.isAffectedBy(event)) return
-		if (config.path.isAffectedBy(event) || config.extraEnv.isAffectedBy(event)) {
+		if (
+			config.path.isAffectedBy(event) ||
+			config.extraEnv.isAffectedBy(event) ||
+			config.profile.isAffectedBy(event)
+		) {
 			await this.reload()
 		}
 		if (config.status.isAffectedBy(event)) {

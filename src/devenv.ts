@@ -1,4 +1,5 @@
 import cp from 'child_process'
+import { readFile } from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
@@ -108,8 +109,32 @@ export async function test(): Promise<void> {
 	await devenv(['version'])
 }
 
+/**
+ * Reads the `profile` field from `devenv.local.yaml` or `devenv.yaml` in the
+ * given directory.  `devenv.local.yaml` takes precedence.
+ * Returns `undefined` when neither file defines a profile.
+ */
+export async function readProfile(root: string): Promise<string | undefined> {
+	for (const filename of ['devenv.local.yaml', 'devenv.yaml']) {
+		try {
+			const content = await readFile(path.join(root, filename), 'utf8')
+			const match = content.match(/^profile:\s*(\S+)/m)
+			if (match) return match[1]
+		} catch {
+			// file does not exist or is not readable — try next
+		}
+	}
+	return undefined
+}
+
 export async function dump(cwdOverride?: string): Promise<Data> {
-	const { stdout } = await devenv(['print-dev-env', '--json'], undefined, cwdOverride)
+	const root = cwdOverride ?? cwd()
+	const configProfile = config.profile.get()
+	const profile = configProfile ?? (await readProfile(root))
+	const printDevEnvArgs = profile
+		? ['--profile', profile, 'print-dev-env', '--json']
+		: ['print-dev-env', '--json']
+	const { stdout } = await devenv(printDevEnvArgs, undefined, cwdOverride)
 	const data = parse(stdout)
 	// Filter out keys that come from the user's extraEnv configuration.
 	// These are injected into the devenv child process but should not be

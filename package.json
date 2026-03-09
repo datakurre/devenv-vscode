@@ -21,7 +21,7 @@
 			"url": "https://github.com/mkhl"
 		}
 	],
-	"publisher": "cachix",
+	"publisher": "datakurre",
 	"license": "0BSD",
 	"repository": {
 		"type": "git",
@@ -59,6 +59,15 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Automatically reload environment on file changes"
+				},
+				"devenv.profile": {
+					"type": [
+						"string",
+						"null"
+					],
+					"default": null,
+					"scope": "resource",
+					"description": "devenv profile to use when loading the environment (e.g. 'shell'). When null (default), the profile is auto-detected from devenv.yaml / devenv.local.yaml. Set explicitly to override the detected value."
 				},
 				"devenv.path.executable": {
 					"type": "string",

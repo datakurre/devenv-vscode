@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+### Added
+- Auto-detect `profile:` from `devenv.local.yaml` / `devenv.yaml` and pass `--profile <name>` to `devenv print-dev-env`; `devenv.local.yaml` takes precedence over `devenv.yaml`
+- New setting `devenv.profile` to override the auto-detected profile (set to a string to pin a profile, or `null` to keep auto-detection)
 
 ## [0.1.0] - 2026-03-07
 ### Added
