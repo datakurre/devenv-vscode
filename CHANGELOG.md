@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.3.0] - 2026-03-16 
 ### Fixed
 - Environment variables removed from `devenv.nix` are now correctly unset from the VS Code process environment and terminal environment collection on reload, instead of persisting until a full reset
 
