@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+### Fixed
+- Environment variables removed from `devenv.nix` are now correctly unset from the VS Code process environment and terminal environment collection on reload, instead of persisting until a full reset
+
 ## [0.2.0] - 2026-03-09
 ### Added
 - Auto-detect `profile:` from `devenv.local.yaml` / `devenv.yaml` and pass `--profile <name>` to `devenv print-dev-env`; `devenv.local.yaml` takes precedence over `devenv.yaml`

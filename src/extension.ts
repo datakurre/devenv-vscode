@@ -161,6 +161,22 @@ class Devenv implements vscode.Disposable {
 		// Avoid updating the environment & cleaning out watchers if data is empty
 		// such as when `devenv.dump()` is called twice without changes
 		if (data.size === 0) return
+
+		// Restore variables that were previously set by devenv but are no longer
+		// present in the new environment dump (i.e. removed from devenv.nix).
+		for (const [key, original] of this.backup) {
+			if (!data.has(key)) {
+				if (!original.existed) {
+					// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+					delete process.env[key]
+				} else {
+					process.env[key] = original.value
+				}
+				this.environment.delete(key)
+				this.backup.delete(key)
+			}
+		}
+
 		for (const [key, value] of data) {
 			if (!this.backup.has(key)) {
 				// keep the oldest value
