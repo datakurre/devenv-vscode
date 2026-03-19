@@ -73,6 +73,7 @@ function section<T extends object>(path: string[], object: T): Settings<T> {
 
 export default section([root], {
 	extraEnv: value({}),
+	extraArgs: value([] as string[]),
 	watchForChanges: value(true),
 	profile: value(null as string | null),
 	path: {

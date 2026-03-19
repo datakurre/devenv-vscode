@@ -72,14 +72,67 @@ export function cwd(): string {
 	return vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? realHome
 }
 
+/**
+ * Parses a `.env` file in `root` and returns the key/value pairs.
+ * Supports `KEY=VALUE` and `export KEY=VALUE` lines; ignores comments and
+ * blank lines.  Surrounding single- or double-quotes are stripped from values.
+ * Returns an empty object when the file does not exist or cannot be read.
+ *
+ * Exported only for use in argument interpolation and unit tests; do not use
+ * this to influence the environment passed to devenv child processes.
+ */
+export async function parseDotEnv(root: string): Promise<NodeJS.ProcessEnv> {
+	const result: NodeJS.ProcessEnv = {}
+	try {
+		const content = await readFile(path.join(root, '.env'), 'utf8')
+		for (const line of content.split('\n')) {
+			const trimmed = line.trim()
+			if (!trimmed || trimmed.startsWith('#')) continue
+			const stripped = trimmed.startsWith('export ') ? trimmed.slice(7) : trimmed
+			const eqIdx = stripped.indexOf('=')
+			if (eqIdx === -1) continue
+			const key = stripped.slice(0, eqIdx).trim()
+			let val = stripped.slice(eqIdx + 1).trim()
+			if (
+				(val.startsWith('"') && val.endsWith('"')) ||
+				(val.startsWith("'") && val.endsWith("'"))
+			) {
+				val = val.slice(1, -1)
+			}
+			if (key) result[key] = val
+		}
+	} catch {
+		// .env file does not exist or is not readable — skip
+	}
+	return result
+}
+
+/**
+ * Replaces `$VAR` and `${VAR}` placeholders in `str` with values from `env`.
+ * Unknown variables are substituted with an empty string.
+ *
+ * Exported only for argument interpolation and unit tests.
+ */
+export function interpolate(str: string, env: NodeJS.ProcessEnv): string {
+	return str.replace(/\$\{([^}]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, braced, bare) => {
+		const key: string = braced ?? bare
+		return env[key] ?? ''
+	})
+}
+
 async function devenv(
 	args: string[],
 	env?: NodeJS.ProcessEnv,
 	cwdOverride?: string,
 ): Promise<Stdio> {
+	const root = cwdOverride ?? cwd()
+	const dotEnv = await parseDotEnv(root)
+	// Shell env takes precedence over .env file values
+	const interpolationEnv: NodeJS.ProcessEnv = { ...dotEnv, ...process.env }
+	const extraArgs = config.extraArgs.get().map(arg => interpolate(arg, interpolationEnv))
 	const options: cp.ExecOptionsWithStringEncoding = {
 		encoding: 'utf8',
-		cwd: cwdOverride ?? cwd(),
+		cwd: root,
 		env: {
 			...process.env,
 			HOME: realHome,
@@ -90,7 +143,7 @@ async function devenv(
 	}
 	const command = config.path.executable.get()
 	try {
-		return await execFile(command, args, options)
+		return await execFile(command, [...extraArgs, ...args], options)
 	} catch (e) {
 		if (
 			e instanceof Error &&

@@ -55,6 +55,15 @@
 						"type": "string"
 					}
 				},
+				"devenv.extraArgs": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"default": [],
+					"scope": "resource",
+					"description": "Additional arguments prepended to every devenv invocation. Each element is a separate argument. Shell environment variables and values from a .env file in the workspace root are interpolated (e.g. \"$NETRC\" or \"${NETRC}\"). Example: [\"--nix-option\", \"extra-sandbox-paths\", \"$NETRC\"]"
+				},
 				"devenv.watchForChanges": {
 					"type": "boolean",
 					"default": true,
