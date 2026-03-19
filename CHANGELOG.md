@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.5.0] - 2026-03-19 
 ### Added
 - New setting `devenv.extraArgs`: an array of extra arguments prepended to every devenv invocation. Each element is a separate argument. `$VAR` and `${VAR}` placeholders are interpolated at call time using values from a `.env` file in the workspace root merged with the shell environment (shell env takes precedence). Example: `["--nix-option", "extra-sandbox-paths", "$NETRC"]`
 
