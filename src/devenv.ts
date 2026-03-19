@@ -129,7 +129,9 @@ async function devenv(
 	const dotEnv = await parseDotEnv(root)
 	// Shell env takes precedence over .env file values
 	const interpolationEnv: NodeJS.ProcessEnv = { ...dotEnv, ...process.env }
-	const extraArgs = config.extraArgs.get().map(arg => interpolate(arg, interpolationEnv))
+	const extraArgs = config.extraArgs
+		.get()
+		.map((arg) => interpolate(arg, interpolationEnv))
 	const options: cp.ExecOptionsWithStringEncoding = {
 		encoding: 'utf8',
 		cwd: root,
