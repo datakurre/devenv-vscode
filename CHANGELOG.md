@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.6.0] - 2026-04-06
+### Changed
+- Replace internal load events (`willLoad`, `didLoad`, `loaded`) with internal flags and direct calls to serialize reloads.
+- Add `loadInFlight` and `loadPending` to avoid concurrent loads; `load()` now queues a pending load if one is already in flight.
+- `load()` now logs the augmented PATH, runs `devenv.test()`, updates the status to `loading`, dumps data, and calls `onDidLoad()` directly.
+- `onDidLoad()` now calls `onLoaded()` directly instead of firing an event.
+
 ## [0.5.2] - 2026-04-06
 ### Changed
 - `devenv.exists()` now checks only for `devenv.nix`; `devenv.yaml` is no longer considered when detecting a project.
