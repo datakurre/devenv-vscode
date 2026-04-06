@@ -166,15 +166,12 @@ export async function test(): Promise<void> {
 
 export async function exists(cwdOverride?: string): Promise<boolean> {
 	const root = cwdOverride ?? cwd()
-	for (const filename of ['devenv.nix', 'devenv.yaml']) {
-		try {
-			await access(path.join(root, filename))
-			return true
-		} catch {
-			// file not found
-		}
+	try {
+		await access(path.join(root, 'devenv.nix'))
+		return true
+	} catch {
+		return false
 	}
-	return false
 }
 
 /**
