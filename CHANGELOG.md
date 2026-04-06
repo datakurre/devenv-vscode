@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.5.1] - 2026-04-06
 ### Fixed
 - No longer shows an error popup when opening a project that does not use devenv (i.e. has no `devenv.nix` or `devenv.yaml`)
 
