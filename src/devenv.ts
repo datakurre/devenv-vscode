@@ -1,5 +1,5 @@
 import cp from 'child_process'
-import { readFile } from 'fs/promises'
+import { access, readFile } from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
@@ -162,6 +162,19 @@ async function devenv(
 
 export async function test(): Promise<void> {
 	await devenv(['version'])
+}
+
+export async function exists(cwdOverride?: string): Promise<boolean> {
+	const root = cwdOverride ?? cwd()
+	for (const filename of ['devenv.nix', 'devenv.yaml']) {
+		try {
+			await access(path.join(root, filename))
+			return true
+		} catch {
+			// file not found
+		}
+	}
+	return false
 }
 
 /**
