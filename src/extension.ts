@@ -26,9 +26,6 @@ type OriginalValue = { existed: false } | { existed: true; value: string }
 class Devenv implements vscode.Disposable {
 	private output = vscode.window.createOutputChannel('devenv')
 	private backup = new Map<string, OriginalValue>()
-	private willLoad = new vscode.EventEmitter<void>()
-	private didLoad = new vscode.EventEmitter<Data>()
-	private loaded = new vscode.EventEmitter<void>()
 	private failed = new vscode.EventEmitter<unknown>()
 	private didUpdate = new vscode.EventEmitter<void>()
 	private cwdOverride: string | undefined = undefined
@@ -37,14 +34,15 @@ class Devenv implements vscode.Disposable {
 	private knownKeys = new Set<string>()
 	/** True when the current load follows a restore (cache hit) — environment already applied. */
 	private isRestoreCycle = false
+	/** True while a load cycle (devenv test + dump) is executing. */
+	private loadInFlight = false
+	/** True when a second load was requested while one is already in flight. */
+	private loadPending = false
 
 	constructor(
 		private context: vscode.ExtensionContext,
 		private status: status.Item,
 	) {
-		this.willLoad.event(() => this.onWillLoad())
-		this.didLoad.event((e) => this.onDidLoad(e))
-		this.loaded.event(() => this.onLoaded())
 		this.failed.event((e) => this.onFailed(e))
 		this.didUpdate.event(() => this.onDidUpdate())
 	}
@@ -231,14 +229,29 @@ class Devenv implements vscode.Disposable {
 	}
 
 	private async load() {
-		await this.attempt(async () => {
-			if (!(await devenv.exists(this.cwdOverride))) {
-				return
+		if (this.loadInFlight) {
+			this.loadPending = true
+			return
+		}
+		this.loadInFlight = true
+		try {
+			await this.attempt(async () => {
+				if (!(await devenv.exists(this.cwdOverride))) {
+					return
+				}
+				this.output.appendLine(`PATH: ${devenv.augmentedPath()}`)
+				await devenv.test()
+				this.status.update(status.State.loading)
+				const data = await devenv.dump(this.cwdOverride)
+				await this.onDidLoad(data)
+			})
+		} finally {
+			this.loadInFlight = false
+			if (this.loadPending) {
+				this.loadPending = false
+				void this.load()
 			}
-			this.output.appendLine(`PATH: ${devenv.augmentedPath()}`)
-			await devenv.test()
-			this.willLoad.fire()
-		})
+		}
 	}
 
 	private async attempt<T>(callback: () => Promise<T>) {
@@ -249,20 +262,10 @@ class Devenv implements vscode.Disposable {
 		}
 	}
 
-	private async onWillLoad() {
-		this.status.update(status.State.loading)
-		try {
-			const data = await devenv.dump(this.cwdOverride)
-			this.didLoad.fire(data)
-		} catch (err) {
-			this.failed.fire(err)
-		}
-	}
-
 	private async onDidLoad(data: Data) {
 		this.updateEnvironment(data)
 		await this.updateCache()
-		this.loaded.fire()
+		this.onLoaded()
 		const currentKeys = new Set(this.backup.keys())
 		const hasNewKeys = [...currentKeys].some((k) => !this.knownKeys.has(k))
 		const hasRemovedKeys = [...this.knownKeys].some((k) => !currentKeys.has(k))
