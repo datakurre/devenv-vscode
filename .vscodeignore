@@ -24,5 +24,8 @@ result
 **/.prettierignore
 **/*.map
 **/*.ts
+eslint.config.mjs
+.release-it.json
+devenv.yaml
 devenv.local.*
 Makefile
