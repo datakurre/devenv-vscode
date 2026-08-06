@@ -297,6 +297,9 @@ const sandboxVariables = new Set([
 ])
 
 export function isInternal(key: string) {
+	if (key === 'DEVENV_ROOT' || key === 'DEVENV_STATE' || key === 'DEVENV_DOTFILE') {
+		return false
+	}
 	return (
 		sandboxVariables.has(key) ||
 		key.startsWith('DEVENV_') ||
