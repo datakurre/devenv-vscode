@@ -37,3 +37,15 @@ format: ## Auto-fix ESLint issues and reformat with Prettier
 .PHONY: test
 test: ## Compile everything and run the test suite
 	npm test
+
+# ----------------------------------------------------------------------------
+# Release
+# ----------------------------------------------------------------------------
+
+.PHONY: release
+release: ## Create a new release (usage: make release [VERSION=v1.2.3])
+	@if [ -n "$(VERSION)" ]; then \
+	  ./node_modules/.bin/release-it $(patsubst v%,%,$(VERSION)); \
+	else \
+	  ./node_modules/.bin/release-it; \
+	fi
