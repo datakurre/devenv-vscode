@@ -1,8 +1,26 @@
 {
-  "npm": {
-    "publish": false
-  },
-  "github": {
-    "release": true
-  }
+    "plugins": {
+        "@release-it/keep-a-changelog": {
+            "filename": "CHANGELOG.md",
+            "addUnreleased": true,
+            "addVersionUrl": false
+        }
+    },
+    "git": {
+        "commitMessage": "chore: release v${version}",
+        "tagName": "v${version}",
+        "tagAnnotation": "Release v${version}",
+        "requireCleanWorkingDir": true,
+        "requireUpstream": false
+    },
+    "github": {
+        "release": false
+    },
+    "gitlab": {
+        "release": false
+    },
+    "npm": {
+        "publish": false,
+        "versionArgs": ["--allow-same-version"]
+    }
 }
