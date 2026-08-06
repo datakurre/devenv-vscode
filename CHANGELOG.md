@@ -17,6 +17,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Fixed
 - Replaced `PATH` replacement with `EnvironmentVariableCollection.prepend` to prevent destroying the system `PATH` and fix "failed to update path" issues on strict shells and VSCodium.
 - Updated launch configuration to open `test/workspace` for extension testing.
+- Allow `DEVENV_ROOT`, `DEVENV_STATE`, and `DEVENV_DOTFILE` in the terminal environment (fixes #63).
 
 ### Docs
 - Documented that `devenv shell` must be run manually to build virtual environments before the extension can detect them.
