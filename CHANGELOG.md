@@ -5,6 +5,9 @@ All notable changes to this project will be documented in this file.
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+### Fixed
+- Improve Python `VIRTUAL_ENV` detection to dynamically use `DEVENV_STATE` from the `devenv` CLI rather than hardcoding `.devenv/state/venv`, fixing Python environment support for custom profiles.
+
 
 ## [0.7.0] - 2026-08-06
 ### Added

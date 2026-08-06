@@ -211,7 +211,8 @@ export async function dump(cwdOverride?: string): Promise<Data> {
 
 	// Manually inject VIRTUAL_ENV and PATH for python venv, since tasks are not evaluated by print-dev-env --json
 	if (!data.has('VIRTUAL_ENV')) {
-		const venvPath = path.join(root, '.devenv', 'state', 'venv')
+		const statePath = data.get('DEVENV_STATE') ?? path.join(root, '.devenv', 'state')
+		const venvPath = path.join(statePath, 'venv')
 		try {
 			const st = await stat(venvPath)
 			if (st.isDirectory()) {
