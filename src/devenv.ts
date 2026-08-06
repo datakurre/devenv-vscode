@@ -1,5 +1,5 @@
 import cp from 'child_process'
-import { access, readFile } from 'fs/promises'
+import { access, readFile, stat } from 'fs/promises'
 import os from 'os'
 import path from 'path'
 import { promisify } from 'util'
@@ -208,6 +208,24 @@ export async function dump(cwdOverride?: string): Promise<Data> {
 	for (const key of Object.keys(extra)) {
 		data.delete(key)
 	}
+
+	// Manually inject VIRTUAL_ENV and PATH for python venv, since tasks are not evaluated by print-dev-env --json
+	if (!data.has('VIRTUAL_ENV')) {
+		const venvPath = path.join(root, '.devenv', 'state', 'venv')
+		try {
+			const st = await stat(venvPath)
+			if (st.isDirectory()) {
+				data.set('VIRTUAL_ENV', venvPath)
+				const currentPath = data.get('PATH')
+				if (currentPath) {
+					data.set('PATH', `${venvPath}/bin${path.delimiter}${currentPath}`)
+				}
+			}
+		} catch {
+			// does not exist, ignore
+		}
+	}
+
 	return data
 }
 
@@ -223,12 +241,12 @@ function parse(stdout: string): Data {
 	for (const [key, entry] of Object.entries(record.variables)) {
 		if (isInternal(key)) continue
 		if (key === 'PATH' && entry.type === 'exported') {
-			// Devenv's PATH contains only Nix store paths for the declared
-			// packages plus stdenv tools.  Replacing the system PATH wholesale
-			// would remove git, system utilities, etc.  Instead prepend
-			// devenv's entries to the real (augmented) system PATH so that
-			// declared packages win but system tools remain reachable.
-			const merged = `${entry.value}${path.delimiter}${augmentedPath()}`
+			// Devenv's PATH contains only Nix store paths for the declared packages plus stdenv tools.
+			// We pass this path to the extension host, which will prepend it to the terminal's PATH.
+			// To ensure GUI apps find git, we also include the extraPaths.
+			const extra = config.path.nixBinPaths.get()
+			const extraPrepends = [...extra, ...extraPaths].join(path.delimiter)
+			const merged = `${entry.value}${path.delimiter}${extraPrepends}`
 			entries.push(['PATH', merged])
 			continue
 		}

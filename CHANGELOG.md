@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+### Added
+- Auto-inject `VIRTUAL_ENV` and prepend `.venv/bin` to `PATH` if `.devenv/state/venv` exists (fixes Python virtual environments in `devenv` 2.x).
+- New report-style logging format for the output channel, detailing `Added`, `Changed`, and `Removed` environment variables explicitly.
+
+### Fixed
+- Replaced `PATH` replacement with `EnvironmentVariableCollection.prepend` to prevent destroying the system `PATH` and fix "failed to update path" issues on strict shells and VSCodium.
+- Updated launch configuration to open `test/workspace` for extension testing.
+
+### Docs
+- Documented that `devenv shell` must be run manually to build virtual environments before the extension can detect them.
+
 ## [0.5.2] - 2026-04-06
 ### Changed
 - `devenv.exists()` now checks only for `devenv.nix`; `devenv.yaml` is no longer considered when detecting a project.
