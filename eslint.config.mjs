@@ -5,7 +5,7 @@ import prettierConfig from 'eslint-config-prettier'
 
 export default tseslint.config(
 	{
-		ignores: ['out/**', 'dist/**', '**/*.d.ts', '.vscode-test/**', '.devenv/**'],
+		ignores: ['out/**', 'dist/**', '**/*.d.ts', '.vscode-test/**', '.devenv/**', 'test/workspace/.devenv/**'],
 	},
 	eslint.configs.recommended,
 	...tseslint.configs.recommended,
