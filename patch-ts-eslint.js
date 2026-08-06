@@ -18,7 +18,7 @@ for (const pkg of packagesToPatch) {
 	if (fs.existsSync(pkgPath)) {
 		console.log(`Injecting typescript@5.9.3 into ${pkg}...`)
 		try {
-			execSync('npm install typescript@5.9.3 --no-save --no-package-lock', {
+			execSync('npm install typescript@5.9.3 --no-save --no-package-lock --legacy-peer-deps', {
 				cwd: pkgPath,
 				stdio: 'inherit',
 			})
