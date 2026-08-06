@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-08-06
 ### Added
 - Auto-inject `VIRTUAL_ENV` and prepend `.venv/bin` to `PATH` if `.devenv/state/venv` exists (fixes Python virtual environments in `devenv` 2.x).
 - New report-style logging format for the output channel, detailing `Added`, `Changed`, and `Removed` environment variables explicitly.
