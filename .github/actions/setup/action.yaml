@@ -24,7 +24,16 @@ runs:
 
     - name: Pre-warm devenv environment
       shell: bash
-      run: cd test/workspace && devenv test
+      run: |
+        for i in 1 2 3; do
+          if (cd test/workspace && devenv test); then
+            break
+          else
+            echo "devenv test failed, retrying ($i/3)..."
+            if [ $i -eq 3 ]; then exit 1; fi
+            sleep 5
+          fi
+        done
 
     - name: Install dependencies
       shell: bash
