@@ -8,6 +8,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Added
 - Auto-inject `VIRTUAL_ENV` and prepend `.venv/bin` to `PATH` if `.devenv/state/venv` exists (fixes Python virtual environments in `devenv` 2.x).
 - New report-style logging format for the output channel, detailing `Added`, `Changed`, and `Removed` environment variables explicitly.
+- New setting `devenv.environment.mutateProcessEnv` to allow users to opt-out of mutating the global `process.env` of the extension host process.
+
+### Changed
+- Updated VS Code engine requirement to `^1.82.0`.
+- Updated build target to `node18`.
 
 ### Fixed
 - Replaced `PATH` replacement with `EnvironmentVariableCollection.prepend` to prevent destroying the system `PATH` and fix "failed to update path" issues on strict shells and VSCodium.

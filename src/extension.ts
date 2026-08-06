@@ -213,19 +213,28 @@ class Devenv implements vscode.Disposable {
 	 * `null` means the variable should be unset; `undefined` is never passed here.
 	 */
 	private applyEntry(key: string, value: string | null) {
+		const original = this.backup.get(key)
 		// Process environment
-		if (value === null) {
-			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-			delete process.env[key]
-		} else {
-			if (key === 'PATH') {
-				process.env[key] = `${value}${path.delimiter}${process.env['PATH'] ?? ''}`
+		if (config.environment.mutateProcessEnv.get()) {
+			if (value === null) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key]
 			} else {
-				process.env[key] = value
+				if (key === 'PATH') {
+					process.env[key] = `${value}${path.delimiter}${process.env['PATH'] ?? ''}`
+				} else {
+					process.env[key] = value
+				}
+			}
+		} else if (original) {
+			if (!original.existed) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key]
+			} else {
+				process.env[key] = original.value
 			}
 		}
 		// Terminal environment collection
-		const original = this.backup.get(key)
 		if (value === null && (original === undefined || !original.existed)) {
 			// Variable did not exist before and should be unset — just leave it absent
 			this.environment.delete(key)

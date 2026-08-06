@@ -28,7 +28,7 @@
 		"url": "https://github.com/datakurre/devenv-vscode"
 	},
 	"engines": {
-		"vscode": "^1.71.0"
+		"vscode": "^1.82.0"
 	},
 	"categories": [
 		"Other"
@@ -102,6 +102,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Automatically restart extension host upon environment changes"
+				},
+				"devenv.environment.mutateProcessEnv": {
+					"type": "boolean",
+					"default": true,
+					"description": "Mutate the global process.env of the extension host process. This allows other extensions to pick up the devenv environment, but can cause unexpected behavior. Disabling this restricts the environment to the terminal."
 				}
 			}
 		},
@@ -146,7 +151,7 @@
 		"package": "vsce package --allow-star-activation",
 		"vscode:prepublish": "run-s \"build -- --minify {@}\" --",
 		"clean": "rimraf ./out ./dist",
-		"build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --target=node16 --external:vscode",
+		"build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --platform=node --target=node18 --external:vscode",
 		"eslint": "eslint --cache --cache-location ./.cache/eslint/ .",
 		"prettier": "prettier --cache --cache-location ./.cache/prettier/ .",
 		"compile:source": "run-s \"build -- --sourcemap {@}\" --",
