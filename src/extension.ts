@@ -211,20 +211,37 @@ class Devenv implements vscode.Disposable {
 	 * `null` means the variable should be unset; `undefined` is never passed here.
 	 */
 	private applyEntry(key: string, value: string | null) {
+		const original = this.backup.get(key)
 		// Process environment
-		if (value === null) {
-			// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-			delete process.env[key]
-		} else {
-			process.env[key] = value
+		if (config.environment.mutateProcessEnv.get()) {
+			if (value === null) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key]
+			} else {
+				if (key === 'PATH') {
+					process.env[key] = `${value}${path.delimiter}${process.env['PATH'] ?? ''}`
+				} else {
+					process.env[key] = value
+				}
+			}
+		} else if (original) {
+			if (!original.existed) {
+				// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+				delete process.env[key]
+			} else {
+				process.env[key] = original.value
+			}
 		}
 		// Terminal environment collection
-		const original = this.backup.get(key)
 		if (value === null && (original === undefined || !original.existed)) {
 			// Variable did not exist before and should be unset — just leave it absent
 			this.environment.delete(key)
 		} else {
-			this.environment.replace(key, value ?? '') // can't unset, set to empty instead
+			if (key === 'PATH' && value !== null) {
+				this.environment.prepend(key, value + path.delimiter)
+			} else {
+				this.environment.replace(key, value ?? '') // can't unset, set to empty instead
+			}
 		}
 	}
 
@@ -239,6 +256,7 @@ class Devenv implements vscode.Disposable {
 				if (!(await devenv.exists(this.cwdOverride))) {
 					return
 				}
+				this.output.appendLine(`--- Devenv Load Started [${new Date().toISOString()}] ---`)
 				this.output.appendLine(`PATH: ${devenv.augmentedPath()}`)
 				await devenv.test()
 				this.status.update(status.State.loading)
@@ -280,6 +298,7 @@ class Devenv implements vscode.Disposable {
 
 	private onLoaded() {
 		if (this.backup.size) {
+			this.output.appendLine('✅ Devenv Load Succeeded')
 			const delta = diffEnvironment(this.backup, this.output)
 			const relativeFolder = this.cwdOverride
 				? path.relative(devenv.cwd(), this.cwdOverride) || undefined
@@ -292,6 +311,7 @@ class Devenv implements vscode.Disposable {
 	}
 
 	private async onFailed(err: unknown) {
+		this.output.appendLine('❌ Devenv Load Failed')
 		this.output.appendLine(`error: ${String(err)}`)
 		this.status.update(status.State.failed)
 		if (err instanceof devenv.CommandNotFoundError) {
@@ -344,25 +364,38 @@ function diffEnvironment(
 	let added = 0
 	let changed = 0
 	let removed = 0
+
+	const addedVars: string[] = []
+	const changedVars: string[] = []
+	const removedVars: string[] = []
+
 	for (const [key, original] of backup) {
+		const now = process.env[key]
 		if (!original.existed) {
 			added += 1
-			output.appendLine(`added: ${key}`)
+			addedVars.push(`  + ${key} = ${now}`)
 		} else if (key in process.env) {
 			changed += 1
-			output.appendLine(`changed: ${key}`)
+			changedVars.push(`  ~ ${key}:\n      was: ${original.value}\n      now: ${now}`)
 		} else {
 			removed += 1
-			output.appendLine(`removed: ${key}`)
-		}
-		if (original.existed) {
-			output.appendLine(`was: ${original.value}`)
-		}
-		const now = process.env[key]
-		if (now) {
-			output.appendLine(`now: ${now}`)
+			removedVars.push(`  - ${key} (was: ${original.value})`)
 		}
 	}
+
+	if (addedVars.length > 0) {
+		output.appendLine('Added Environment Variables:')
+		addedVars.forEach((v) => output.appendLine(v))
+	}
+	if (changedVars.length > 0) {
+		output.appendLine('Changed Environment Variables:')
+		changedVars.forEach((v) => output.appendLine(v))
+	}
+	if (removedVars.length > 0) {
+		output.appendLine('Removed Environment Variables:')
+		removedVars.forEach((v) => output.appendLine(v))
+	}
+
 	return { added, changed, removed }
 }
 

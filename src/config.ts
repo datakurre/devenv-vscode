@@ -86,4 +86,7 @@ export default section([root], {
 	restart: {
 		automatic: value(false),
 	},
+	environment: {
+		mutateProcessEnv: value(true),
+	},
 })

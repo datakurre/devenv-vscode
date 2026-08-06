@@ -4,7 +4,24 @@ All notable changes to this project will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.6.0] - 2026-04-06
+## [Unreleased]
+### Added
+- Auto-inject `VIRTUAL_ENV` and prepend `.venv/bin` to `PATH` if `.devenv/state/venv` exists (fixes Python virtual environments in `devenv` 2.x).
+- New report-style logging format for the output channel, detailing `Added`, `Changed`, and `Removed` environment variables explicitly.
+- New setting `devenv.environment.mutateProcessEnv` to allow users to opt-out of mutating the global `process.env` of the extension host process.
+
+### Changed
+- Updated VS Code engine requirement to `^1.82.0`.
+- Updated build target to `node18`.
+
+### Fixed
+- Replaced `PATH` replacement with `EnvironmentVariableCollection.prepend` to prevent destroying the system `PATH` and fix "failed to update path" issues on strict shells and VSCodium.
+- Updated launch configuration to open `test/workspace` for extension testing.
+
+### Docs
+- Documented that `devenv shell` must be run manually to build virtual environments before the extension can detect them.
+
+## [0.6.0] - 2026-11-04
 ### Changed
 - Replace internal load events (`willLoad`, `didLoad`, `loaded`) with internal flags and direct calls to serialize reloads.
 - Add `loadInFlight` and `loadPending` to avoid concurrent loads; `load()` now queues a pending load if one is already in flight.

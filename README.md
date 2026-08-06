@@ -86,3 +86,13 @@ but some programs insist on treating them distinctly.
 [vscode-evc]: https://github.com/microsoft/vscode/issues/185200
 
 devenv evaluates Nix expressions so this extension requires trusted workspaces.
+
+### Virtual Environments and Background Tasks
+
+This extension determines your environment by running `devenv print-dev-env --json` in the background. This command is fast and purely evaluates your Nix derivations without executing heavy shell tasks.
+
+Because of this, if your `devenv.nix` contains configurations that require a shell task to physically build (such as `languages.python.venv.enable = true` in `devenv` 2.x), the extension **will not** automatically build the `.venv` directory for you in the background when you edit the file. Doing so could cause unexpected CPU spikes, network downloads, and hide installation errors from you.
+
+**To build or update your virtual environment:**
+1. Open a terminal and run `devenv shell` (or use `direnv`). This will execute the required tasks and build your virtual environment.
+2. The extension will automatically detect that the `.devenv/state/venv` folder now exists, and it will safely inject the `VIRTUAL_ENV` variable and prepend `.venv/bin` into your VS Code `PATH`.
