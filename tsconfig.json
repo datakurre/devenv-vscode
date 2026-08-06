@@ -1,6 +1,7 @@
 {
 	"compilerOptions": {
 		"module": "CommonJS",
+		"types": ["node"],
 		"target": "es2022",
 		"outDir": "out",
 		"sourceMap": true,
