@@ -256,7 +256,9 @@ class Devenv implements vscode.Disposable {
 				if (!(await devenv.exists(this.cwdOverride))) {
 					return
 				}
-				this.output.appendLine(`--- Devenv Load Started [${new Date().toISOString()}] ---`)
+				this.output.appendLine(
+					`--- Devenv Load Started [${new Date().toISOString()}] ---`,
+				)
 				this.output.appendLine(`PATH: ${devenv.augmentedPath()}`)
 				await devenv.test()
 				this.status.update(status.State.loading)
