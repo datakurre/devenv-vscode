@@ -176,7 +176,7 @@
 		"@release-it/keep-a-changelog": "^8.0.0",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "16.18.101",
-		"@types/sinon": "^22.0.0",
+		"@types/sinon": "^22.0.2",
 		"@types/vscode": "1.71.x",
 		"@typescript-eslint/eslint-plugin": "^8.66.0",
 		"@typescript-eslint/parser": "^8.66.0",
